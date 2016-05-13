@@ -12,15 +12,28 @@
 			margin: 2em;
 		}
 
-    .using {
-      width: 500px;
-      height: 2em;
+    .quic-status div {
+      padding: 1em;
+      font-size: 1.5em;
+      text-align: center;
     }
 
-    .demo {
-      width: 100px;
-      height: 100px;
-			text-align: center;
+    .quic-enabled {
+      background-color: #dff0d8;
+      color: #3c763d;
+    }
+
+    .quic-disabled {
+      background-color: #f2dede;
+      color: #a94442;
+    }
+
+    .quic-enabled.status-no {
+      display: none;
+    }
+
+    .quic-disabled.status-yes {
+      display: none;
     }
 
 		footer {
@@ -29,15 +42,22 @@
   </style>
 </head>
 <body>
-	<h1>QUIC Test Page</h1>
+	<h1>QUIC Demo Page</h1>
 
-  <iframe class="using" src="/using"></iframe>
+  <div class="quic-status">
+    <div class="quic-enabled status-QUIC_STATUS">
+      QUIC is enabled :)
+    </div>
+    <div class="quic-disabled status-QUIC_STATUS">
+      QUIC is disabled :(
+    </div>
+  </div>
 
 	<p>
-		This webpage uses an experimental <a href="https://github.com/lucas-clemente/quic-go">Go implemention</a> of the novel <a href="https://en.wikipedia.org/wiki/QUIC">QUIC protocol</a> proposed by Google.
+		This webpage demoes an experimental <a href="https://github.com/lucas-clemente/quic-go">Go implemention</a> of the novel <a href="https://en.wikipedia.org/wiki/QUIC">QUIC protocol</a> proposed by Google.
 	</p>
 	<p>
-		To use it, you need to use a current Chrome version, and launch it using a special command from the console. For OS X, try:
+		To try it out, you need to use a current Chrome version, and launch it with a special command from the console. For OS X, try:
 		<code>
 			/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome  --user-data-dir=/tmp/chrome --origin-to-force-quic-on=quic.clemente.io:443,quic.clemente.io:8005,quic.clemente.io:8006,quic.clemente.io:8007,quic.clemente.io:8008,quic.clemente.io:8009 --enable-quic https://quic.clemente.io
 		</code>
@@ -51,7 +71,7 @@
   <h2>Experiments</h2>
 
   <ul>
-    <li><a href="/rtt.html">The effect of round-trips</a></li>
+    <li><a href="/rtt">The effect of round-trips</a></li>
   </ul>
 
 	<footer>

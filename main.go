@@ -3,12 +3,19 @@ package main
 import (
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/lucas-clemente/quic-go/h2quic"
 	"github.com/lucas-clemente/quic-go/testdata"
 	"github.com/lucas-clemente/quic-go/utils"
 )
+
+const timeout = 4 * time.Second
+
+var quicServer *h2quic.Server
+
+var indexQuic, indexH2, rtt string
 
 func testHandler(w http.ResponseWriter, req *http.Request) {
 	io.WriteString(w, `<body style="font-family: sans-serif; background-color: #5cb85c; color: white; text-align: center; padding-top: 30px;">Loaded</body>`)
@@ -17,8 +24,6 @@ func testHandler(w http.ResponseWriter, req *http.Request) {
 func notQuicHandler(w http.ResponseWriter, req *http.Request) {
 	io.WriteString(w, "Not using QUIC, see instructions.")
 }
-
-const timeout = 4 * time.Second
 
 func runH2Server(port string, handler http.Handler) {
 	h2server := &http.Server{
@@ -38,8 +43,6 @@ func startServer(port string) {
 	server.ListenAndServeTLS("/certs/cert.pem", "/certs/privkey.pem")
 }
 
-var quicServer *h2quic.Server
-
 func runQuicServer(port string, handler http.Handler) {
 	err := quicServer.ListenAndServe(":"+port, handler)
 	if err != nil {
@@ -49,6 +52,12 @@ func runQuicServer(port string, handler http.Handler) {
 
 func main() {
 	utils.SetLogLevel(utils.LogLevelInfo)
+
+	data, _ := Asset("html/rtt.html")
+	rtt = string(data)
+	data, _ = Asset("html/index.html")
+	indexQuic = strings.Replace(string(data), "QUIC_STATUS", "yes", -1)
+	indexH2 = strings.Replace(string(data), "QUIC_STATUS", "no", -1)
 
 	tlsConfig := testdata.GetTLSConfig()
 	var err error
@@ -63,11 +72,13 @@ func main() {
 	h2Mux.HandleFunc("/using", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, "not using QUIC :(") })
 	h2Mux.HandleFunc("/test", testHandler)
 	h2Mux.HandleFunc("/test-quic", notQuicHandler)
-	h2Mux.Handle("/", http.FileServer(assetFS()))
+	h2Mux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, rtt) })
+	h2Mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, indexH2) })
 
 	quicMux.HandleFunc("/using", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, "using QUIC :)") })
 	quicMux.HandleFunc("/test-quic", testHandler)
-	quicMux.Handle("/", http.FileServer(assetFS()))
+	quicMux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, rtt) })
+	quicMux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, indexQuic) })
 
 	go runH2Server("8000", h2Mux)
 	go runH2Server("8001", h2Mux)
@@ -86,5 +97,8 @@ func main() {
 	go runQuicServer("8000", quicMux)
 
 	go runQuicServer("7000", quicMux)
-	http.ListenAndServeTLS(":7000", "/certs/cert.pem", "/certs/privkey.pem", h2Mux)
+	err = http.ListenAndServeTLS(":7000", "/certs/cert.pem", "/certs/privkey.pem", h2Mux)
+	if err != nil {
+		panic(err)
+	}
 }
