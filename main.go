@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -10,8 +11,6 @@ import (
 	"github.com/lucas-clemente/quic-go/testdata"
 	"github.com/lucas-clemente/quic-go/utils"
 )
-
-const timeout = 4 * time.Second
 
 var quicServer *h2quic.Server
 
@@ -30,17 +29,15 @@ func runH2Server(port string, handler http.Handler) {
 		Addr:    ":" + port,
 		Handler: handler,
 	}
-	h2server.ReadTimeout = timeout
-	h2server.ListenAndServeTLS("/certs/cert.pem", "/certs/privkey.pem")
-}
-
-func startServer(port string) {
-	server := &http.Server{
-		Addr:    ":" + port,
-		Handler: nil,
+	h2server.ConnState = func(c net.Conn, cs http.ConnState) {
+		if cs == http.StateIdle {
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				c.Close()
+			}()
+		}
 	}
-	server.ReadTimeout = timeout
-	server.ListenAndServeTLS("/certs/cert.pem", "/certs/privkey.pem")
+	h2server.ListenAndServeTLS("/certs/cert.pem", "/certs/privkey.pem")
 }
 
 func runQuicServer(port string, handler http.Handler) {
@@ -65,17 +62,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	quicServer.CloseAfterFirstRequest = true
 
 	quicMux := http.NewServeMux()
 	h2Mux := http.NewServeMux()
 
-	h2Mux.HandleFunc("/using", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, "not using QUIC :(") })
 	h2Mux.HandleFunc("/test", testHandler)
 	h2Mux.HandleFunc("/test-quic", notQuicHandler)
 	h2Mux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, rtt) })
 	h2Mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, indexH2) })
 
-	quicMux.HandleFunc("/using", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, "using QUIC :)") })
 	quicMux.HandleFunc("/test-quic", testHandler)
 	quicMux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, rtt) })
 	quicMux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, indexQuic) })
@@ -94,9 +90,13 @@ func main() {
 	go runQuicServer("8006", quicMux)
 	go runQuicServer("8008", quicMux)
 	go runQuicServer("8009", quicMux)
-	go runQuicServer("8000", quicMux)
 
-	go runQuicServer("7000", quicMux)
+	mainQuicServer, err := h2quic.NewServer(tlsConfig)
+	if err != nil {
+		panic(err)
+	}
+	go mainQuicServer.ListenAndServe(":7000", quicMux)
+
 	err = http.ListenAndServeTLS(":7000", "/certs/cert.pem", "/certs/privkey.pem", h2Mux)
 	if err != nil {
 		panic(err)
