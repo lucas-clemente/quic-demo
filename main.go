@@ -19,6 +19,8 @@ func testHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func notQuicHandler(w http.ResponseWriter, req *http.Request) {
+	_, port, _ := net.SplitHostPort(req.Host)
+	setHeaders(port, w.Header())
 	io.WriteString(w, "Not using QUIC, see instructions.")
 }
 
@@ -51,6 +53,11 @@ func runQuicServer(port string, handler http.Handler) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func setHeaders(port string, header http.Header) {
+	header.Add("Alternate-Protocol", port+":quic")
+	header.Add("Alt-Svc", `quic=":`+port+`"; ma=2592000; v="33,32,31,30"`)
 }
 
 func main() {
@@ -102,9 +109,7 @@ func main() {
 	quicMux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, rtt) })
 
 	h2Mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Add("Alternate-Protocol", "443:quic")
-		w.Header().Add("Alt-Svc", `quic=":443"; ma=2592000; v="33,32,31,30"`)
-
+		setHeaders("443", w.Header())
 		io.WriteString(w, indexH2)
 	})
 	h2Mux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) {
