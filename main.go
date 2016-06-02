@@ -102,11 +102,12 @@ func main() {
 	quicMux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, rtt) })
 
 	h2Mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		quicServer.SetQuicHeaders(w.Header())
+		w.Header().Add("Alternate-Protocol", "443:quic")
+		w.Header().Add("Alt-Svc", `quic=":443"; ma=2592000; v="33,32,31,30"`)
+
 		io.WriteString(w, indexH2)
 	})
 	h2Mux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) {
-		quicServer.SetQuicHeaders(w.Header())
 		io.WriteString(w, rtt)
 	})
 
