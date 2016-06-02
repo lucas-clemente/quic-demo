@@ -12,8 +12,6 @@ import (
 	"github.com/lucas-clemente/quic-go/utils"
 )
 
-var quicServer *h2quic.Server
-
 var indexQuic, indexH2, rtt string
 
 func testHandler(w http.ResponseWriter, req *http.Request) {
@@ -41,7 +39,15 @@ func runH2Server(port string, handler http.Handler) {
 }
 
 func runQuicServer(port string, handler http.Handler) {
-	err := quicServer.ListenAndServe(":"+port, handler)
+	server := &h2quic.Server{
+		Server: &http.Server{
+			Addr:      ":" + port,
+			Handler:   handler,
+			TLSConfig: testdata.GetTLSConfig(),
+		},
+		CloseAfterFirstRequest: true,
+	}
+	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
@@ -56,46 +62,60 @@ func main() {
 	indexQuic = strings.Replace(string(data), "QUIC_STATUS", "yes", -1)
 	indexH2 = strings.Replace(string(data), "QUIC_STATUS", "no", -1)
 
-	tlsConfig := testdata.GetTLSConfig()
 	var err error
-	quicServer, err = h2quic.NewServer(tlsConfig)
-	if err != nil {
-		panic(err)
-	}
-	quicServer.CloseAfterFirstRequest = true
+
+	quicRTTMux := http.NewServeMux()
+	h2RTTMux := http.NewServeMux()
+
+	h2RTTMux.HandleFunc("/test", testHandler)
+	h2RTTMux.HandleFunc("/test-quic", notQuicHandler)
+
+	quicRTTMux.HandleFunc("/test-quic", testHandler)
+
+	go runH2Server("8000", h2RTTMux)
+	go runH2Server("8001", h2RTTMux)
+	go runH2Server("8003", h2RTTMux)
+	go runH2Server("8004", h2RTTMux)
+
+	go runH2Server("8005", h2RTTMux)
+	go runH2Server("8006", h2RTTMux)
+	go runH2Server("8008", h2RTTMux)
+	go runH2Server("8009", h2RTTMux)
+
+	go runQuicServer("8005", quicRTTMux)
+	go runQuicServer("8006", quicRTTMux)
+	go runQuicServer("8008", quicRTTMux)
+	go runQuicServer("8009", quicRTTMux)
 
 	quicMux := http.NewServeMux()
 	h2Mux := http.NewServeMux()
 
-	h2Mux.HandleFunc("/test", testHandler)
-	h2Mux.HandleFunc("/test-quic", notQuicHandler)
-	h2Mux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, rtt) })
-	h2Mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, indexH2) })
-
-	quicMux.HandleFunc("/test-quic", testHandler)
-	quicMux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, rtt) })
-	quicMux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, indexQuic) })
-
-	go runH2Server("8000", h2Mux)
-	go runH2Server("8001", h2Mux)
-	go runH2Server("8003", h2Mux)
-	go runH2Server("8004", h2Mux)
-
-	go runH2Server("8005", h2Mux)
-	go runH2Server("8006", h2Mux)
-	go runH2Server("8008", h2Mux)
-	go runH2Server("8009", h2Mux)
-
-	go runQuicServer("8005", quicMux)
-	go runQuicServer("8006", quicMux)
-	go runQuicServer("8008", quicMux)
-	go runQuicServer("8009", quicMux)
-
-	mainQuicServer, err := h2quic.NewServer(tlsConfig)
-	if err != nil {
-		panic(err)
+	quicServer := &h2quic.Server{
+		Server: &http.Server{
+			Addr:      ":7000",
+			Handler:   quicMux,
+			TLSConfig: testdata.GetTLSConfig(),
+		},
 	}
-	go mainQuicServer.ListenAndServe(":7000", quicMux)
+
+	quicMux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, indexQuic) })
+	quicMux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) { io.WriteString(w, rtt) })
+
+	h2Mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		quicServer.SetQuicHeaders(w.Header())
+		io.WriteString(w, indexH2)
+	})
+	h2Mux.HandleFunc("/rtt", func(w http.ResponseWriter, req *http.Request) {
+		quicServer.SetQuicHeaders(w.Header())
+		io.WriteString(w, rtt)
+	})
+
+	go func() {
+		err := quicServer.ListenAndServe()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	err = http.ListenAndServeTLS(":7000", "/certs/cert.pem", "/certs/privkey.pem", h2Mux)
 	if err != nil {
