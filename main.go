@@ -21,7 +21,7 @@ func testHandler(w http.ResponseWriter, req *http.Request) {
 func notQuicHandler(w http.ResponseWriter, req *http.Request) {
 	_, port, _ := net.SplitHostPort(req.Host)
 	setHeaders(port, w.Header())
-	io.WriteString(w, "Not using QUIC, see instructions.")
+	io.WriteString(w, "Not using QUIC, reload or see instructions.")
 }
 
 func runH2Server(port string, handler http.Handler) {
