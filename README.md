@@ -18,7 +18,9 @@ Important commands:
 go-bindata html/... && \
 go build -o main && \
 sudo docker build -t lclemente/quic-demo . && \
-sudo docker run --rm -it --cap-add=NET_ADMIN \
+sudo docker kill quic-demo; \
+ sudo docker rm quic-demo; \
+sudo docker run --name quic-demo -d --cap-add=NET_ADMIN \
 -p 8000-8009:8000-8009 -p 8000-8009:8000-8009/udp \
 -p 7000:7000 -p 443:7000/udp \
 -v /etc/letsencrypt/live/quic.clemente.io:/certs \
