@@ -8,13 +8,11 @@ function delay {
 }
 
 delay 8001 100ms 11
-delay 8002 200ms 12
-delay 8003 500ms 13
-delay 8004 1s 14
+delay 8002 500ms 12
+delay 8003 1s 13
 
 delay 8006 100ms 16
-delay 8007 200ms 17
-delay 8008 500ms 18
-delay 8009 1s 19
+delay 8007 500ms 17
+delay 8008 1s 18
 
 sudo -u nobody /main

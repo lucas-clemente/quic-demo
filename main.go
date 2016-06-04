@@ -81,18 +81,18 @@ func main() {
 
 	go runH2Server("8000", h2RTTMux)
 	go runH2Server("8001", h2RTTMux)
+	go runH2Server("8002", h2RTTMux)
 	go runH2Server("8003", h2RTTMux)
-	go runH2Server("8004", h2RTTMux)
 
 	go runH2Server("8005", h2RTTMux)
 	go runH2Server("8006", h2RTTMux)
+	go runH2Server("8007", h2RTTMux)
 	go runH2Server("8008", h2RTTMux)
-	go runH2Server("8009", h2RTTMux)
 
 	go runQuicServer("8005", quicRTTMux)
 	go runQuicServer("8006", quicRTTMux)
+	go runQuicServer("8007", quicRTTMux)
 	go runQuicServer("8008", quicRTTMux)
-	go runQuicServer("8009", quicRTTMux)
 
 	quicMux := http.NewServeMux()
 	h2Mux := http.NewServeMux()
