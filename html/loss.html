@@ -1,0 +1,42 @@
+<html>
+<head>
+  <title>QUIC Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 1em;
+    }
+
+    .tiles {
+      margin: 2em;
+    }
+
+    .tiles img {
+      width: 50px;
+      height: 50px;
+    }
+  </style>
+</head>
+<body>
+  <h2>The effect of Packet Loss (try reloading!)</h2>
+
+  <p>
+    Here, we try loading many (90) small files over a lossy (20% packet loss) and high-RTT (500ms RTT) connection. TCP has the problem of <a href="https://en.wikipedia.org/wiki/Head-of-line_blocking">head-of-line blocking</a>, which makes QUIC advantageous in this setup. Note that currently our QUIC implementation of loss detection is very limited, so TCP might (still) outperform us.
+  </p>
+
+  <p>
+    <ul>
+      <li>
+        <a href="/loss">TCP+TLS+HTTP/2</a>
+      </li>
+      <li>
+        <a href="/loss-quic">QUIC</a>
+      </li>
+    </ul>
+  </p>
+
+  <h2>CURRENT</h2>
+
+  <div class="tiles">TILES</div>
+</body>
+</html>
