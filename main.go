@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"github.com/lucas-clemente/quic-go/h2quic"
-	"github.com/lucas-clemente/quic-go/testdata"
 	"github.com/lucas-clemente/quic-go/utils"
 )
 
@@ -97,13 +97,23 @@ func runQuicServer(port string, handler http.Handler, closeAfterFirst bool) {
 		Server: &http.Server{
 			Addr:      ":" + port,
 			Handler:   handler,
-			TLSConfig: testdata.GetTLSConfig(),
+			TLSConfig: GetTLSConfig(),
 		},
 		CloseAfterFirstRequest: closeAfterFirst,
 	}
 	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
+	}
+}
+
+func GetTLSConfig() *tls.Config {
+	cert, err := tls.LoadX509KeyPair("/certs/fullchain.pem", "/certs/privkey.pem")
+	if err != nil {
+		panic(err)
+	}
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
 	}
 }
 
@@ -168,7 +178,7 @@ func main() {
 		Server: &http.Server{
 			Addr:      ":7000",
 			Handler:   quicMux,
-			TLSConfig: testdata.GetTLSConfig(),
+			TLSConfig: GetTLSConfig(),
 		},
 	}
 
@@ -195,7 +205,7 @@ func main() {
 		}
 	}()
 
-	err = http.ListenAndServeTLS(":7000", "/certs/cert.pem", "/certs/privkey.pem", h2Mux)
+	err = http.ListenAndServeTLS(":7000", "/certs/fullchain.pem", "/certs/privkey.pem", h2Mux)
 	if err != nil {
 		panic(err)
 	}
