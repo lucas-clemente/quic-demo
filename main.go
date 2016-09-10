@@ -119,7 +119,7 @@ func GetTLSConfig() *tls.Config {
 
 func setHeaders(port string, header http.Header) {
 	header.Add("Alternate-Protocol", port+":quic")
-	header.Add("Alt-Svc", `quic=":`+port+`"; ma=2592000; v="34,33,32,31,30"`)
+	header.Add("Alt-Svc", `quic=":`+port+`"; ma=2592000; v="36,35,34"`)
 }
 
 func main() {
